@@ -1,6 +1,6 @@
 [project]
 name = "lcmutils"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python utility library for Lightweight Communications and Marshalling (LCM)."
 authors = [
     { name = "Kevin Barnard", email = "kbarnard@mbari.org" }
