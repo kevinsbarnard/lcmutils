@@ -1,7 +1,8 @@
 from collections.abc import Callable
-from typing import BinaryIO, Protocol, Any
+from typing import BinaryIO, Protocol, Any, runtime_checkable
 
 
+@runtime_checkable
 class LCMType(Protocol):
     """
     LCM type protocol to support static duck typing for LCM type classes generated via lcm-gen.

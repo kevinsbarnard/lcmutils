@@ -61,21 +61,23 @@ class LCMDaemon:
         """
         self._running = False
         self._thread.join()
-    
+
     def subscribe(self, *channel: tuple[str]) -> Callable[[LCMHandler], LCMHandler]:
         """
         Create a decorator to subscribe a function to one or more channels.
-        
+
         Args:
             channel (tuple[str]): Channel(s) to subscribe to.
-        
+
         Returns:
             callable: Decorator that subscribes a function to the channel.
         """
+
         def decorator(handler: LCMHandler) -> LCMHandler:
             for c in channel:
                 self._lcm.subscribe(c, handler)
             return handler
+
         return decorator
 
 

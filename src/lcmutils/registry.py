@@ -56,10 +56,10 @@ class LCMTypeRegistry:
     def detect(self, data: bytes) -> Type[LCMType]:
         """
         Detect the LCM type class associated with LCM message data.
-        
+
         Args:
             data (bytes): LCM message data.
-        
+
         Returns:
             Type[LCMType]: LCM type class associated with the data.
         """
@@ -96,8 +96,10 @@ class LCMTypeRegistry:
         """
         package = import_module(package_name)
 
-        for loader, module_name, _ in walk_packages(package.__path__):
-            module = loader.find_module(module_name).load_module(module_name)
+        for module_finder, module_name, _ in walk_packages(package.__path__):
+            module = module_finder.find_spec(module_name).loader.load_module(
+                module_name
+            )
 
             for name in dir(module):
                 cls = getattr(module, name)
