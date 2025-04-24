@@ -11,3 +11,6 @@ wheels/
 
 # rye
 requirements*.lock
+
+# uv
+uv.lock
