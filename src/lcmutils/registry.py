@@ -1,8 +1,12 @@
+import sys
 from importlib import import_module
-from pkgutil import walk_packages
-from typing import Type
+from itertools import chain
+from pkgutil import iter_modules, walk_packages
+from typing import List, Optional, Type
 
 from lcmutils.typing import LCMType
+
+SIDE_EFFECT_PACKAGES = {"antigravity", "lib2to3", "this", "unittest", "venv"}
 
 
 class LCMTypeRegistry:
@@ -84,28 +88,61 @@ class LCMTypeRegistry:
 
         return cls.decode(data)
 
-    def discover(self, package_name: str):
+    def discover(self, module_name: str) -> None:
         """
-        Discover LCM type classes in a Python package by name.
+        Discover LCM type classes in a Python package or module by name.
 
         Args:
-            package_name (str): Package to discover.
-
-        Raises:
-            PackageNotFoundError: If the package is not found.
+            module_name (str): Package or module to discover.
         """
-        package = import_module(package_name)
+        module = import_module(module_name)
 
-        for module_finder, module_name, _ in walk_packages(package.__path__):
-            module = module_finder.find_spec(module_name).loader.load_module(
-                module_name
-            )
+        # Add all LCM types from the module itself
+        for name in dir(module):
+            cls = getattr(module, name)
+            if isinstance(cls, type) and issubclass(cls, LCMType):
+                self.register(cls)
 
-            for name in dir(module):
-                cls = getattr(module, name)
+        # If it's a package, recursively process all submodules
+        if hasattr(module, "__path__"):
+            for _, submodule_name, _ in walk_packages(
+                module.__path__, prefix=f"{module_name}."
+            ):
+                try:
+                    submodule = import_module(submodule_name)
+                    for name in dir(submodule):
+                        cls = getattr(submodule, name)
+                        if isinstance(cls, type) and issubclass(cls, LCMType):
+                            self.register(cls)
+                except ImportError:
+                    # Skip modules that can't be imported, but don't fail the entire discovery
+                    pass
 
-                if isinstance(cls, type) and issubclass(cls, LCMType):
-                    self.register(cls)
+    def discover_all(self, skip: Optional[List[str]] = None) -> None:
+        """
+        Discover all LCM types in all installed packages and modules.
+
+        This function iterates through all installed packages and modules in sys.path, and attempts to discover LCM types in each one. It skips packages that are known to have side effects.
+        """
+        # Collect the set of packages to skip
+        if skip is None:
+            skip = SIDE_EFFECT_PACKAGES
+        else:
+            skip = set(skip).union(SIDE_EFFECT_PACKAGES)
+
+        # Iterate through all installed packages and modules
+        pkg_gen = chain(iter_modules(), iter_modules(sys.path))
+        for pkg in pkg_gen:
+            # Skip packages that are in the skip list or are private/internal
+            if pkg.name.startswith("_") or pkg.name in SIDE_EFFECT_PACKAGES:
+                continue
+
+            # Try to discover LCM types in the package
+            try:
+                self.discover(pkg.name)
+            except Exception:
+                # Skip packages that fail for any reason
+                pass
 
 
 __all__ = ["LCMTypeRegistry"]
